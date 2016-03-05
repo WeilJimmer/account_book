@@ -1,0 +1,2 @@
+ErrorDocument 404 "404ERROR"
+ErrorDocument 403 "403ERROR"
