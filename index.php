@@ -12,6 +12,8 @@
 require_once('./data/config.php');
 require_once("./data/conn.php");
 require_once('./data/access_key.php');
+require_once('./data/function.php');
+require_once('./data/lastpos.php');
 session_start();
 
 if ($force_https and $_SERVER['HTTPS']!='on'){
@@ -38,8 +40,17 @@ if((stristr($useragent,'mobile')!==false or stristr($useragent,'iphone')!==false
 }
 
 $page=intval(@$_GET['page']);
-$orderby=intval(@$_GET['orderby']);
-$account_id=intval(@$_GET['account']);
+
+if (isset($_GET['orderby'])){
+	$orderby=intval(@$_GET['orderby']);
+}else{
+	$orderby=intval(@$orderby_lasttime);
+}
+if (isset($_GET['account'])){
+	$account_id=intval(@$_GET['account']);
+}else{
+	$account_id=intval($accound_id_lasttime);
+}
 
 if($page<=0){
 	$page=1;
@@ -49,9 +60,11 @@ if($orderby<0){
 	$orderby=0;
 }
 
-if($account_id<0 or $account_id>=count($account_book_array)){
-	$account_id=0;
+if($account_id<=0 or $account_id>count($account_book_array)){
+	$account_id=1;
 }
+
+write_last_pos($account_id,$orderby);
 
 $acu='&nbsp;'.$account_unit_array[$account_id];
 
@@ -102,22 +115,22 @@ if($page==1){
 <div><?php
 echo '<select id="Select3" style="border: 0px solid #000;width:100%;height:28px;outline: 0;background: rgba(0,0,0,0);color: #00FFEA;" onChange="var Select3= document.getElementById(\'Select3\').options[document.getElementById(\'Select3\').selectedIndex];window.location=\'?type='.$type.'&orderby='.$orderby.'&account=\' + Select3.value;">';
 for ($i=0;$i<count($account_book_array);$i++){
-	if ($i==$account_id){
-		echo '<option style="background-color:#0B143C;color:#FF0000;" selected="selected" value="'.$i.'">'.$account_book_array[$i].'</option>'."\n";
+	if (($i+1)==$account_id){
+		echo '<option style="background-color:#0B143C;color:#FF0000;" selected="selected" value="'.($i+1).'">'.$account_book_array[$i].'</option>'."\n";
 	}else{
-		echo '<option style="background-color:#0B143C;color:#FF0000;" value="'.$i.'">'.$account_book_array[$i].'</option>'."\n";
+		echo '<option style="background-color:#0B143C;color:#FF0000;" value="'.($i+1).'">'.$account_book_array[$i].'</option>'."\n";
 	}
 }
 echo '</select>';
 ?></div><hr>
-<div><a onclick="add_item();" href="#">新增紀錄</a></div><hr>
-<div><a onclick="show_status()" href="#">狀態</a></div><hr>
+<div><a onclick="add_item();" href="#titlex">新增紀錄</a></div><hr>
+<div><a onclick="show_status()" href="#titlex">狀態</a></div><hr>
 <div><a onclick="window.top.location.reload()" href="#">刷新</a></div><hr>
 <div><a href="./action.php?mod=logout" target="Ix">登出</a></div>
 </header>
 </nav>
 <div id="panel" style="height:100%;">
-<div style="position:fixed;left:10px;top:10px;"><img src="./img/menu.png" alt="選單" onclick="button_toggle()"></div><h2>紀錄 - <?php echo $account_book_array[$account_id]; ?></h2>
+<div style="position:fixed;left:10px;top:10px;"><img src="./img/menu.png" alt="選單" onclick="button_toggle()"></div><h2 id="titlex">紀錄 - <?php echo $account_book_array[($account_id-1)]; ?></h2>
 <div id="panel1" class="panel" style="width:<?php echo $box_width; ?>;height:<?php echo $box_height; ?>;top:<?php echo $box_top; ?>">
 <h3>新增紀錄<span style="float:right"><button style="background-color:black;color:red;" onclick="close_panel()">關閉</button></span></h3>
 <form class="form_style" action="action.php?mod=add" method="post" target="Ix" onsubmit="return submit_form()" id="form1">
@@ -128,7 +141,7 @@ echo '</select>';
 <tr><td>&nbsp;記錄人：</td><td><input name="name" type="text" maxlength="20" id="name_input"></td></tr>
 <tr><td>&nbsp;日期：</td><td><input name="date" type="date" id="date_input"><input name="account_id" type="hidden" value="<?php echo $account_id; ?>"></td></tr>
 <tr><td>&nbsp;時間：</td><td><input name="time" type="time" id="time_input"><input name="btime" type="hidden" id="btime_input" value=""></td></tr>
-<tr><td colspan="2"><input id="submit_input" type="submit" value="送　　出　　紀　　錄" style="text-align:center;color:lime;"></td></tr>
+<tr><td colspan="2"><input id="submit_input" type="submit" value="送　　出　　紀　　錄" style="text-align:center;color:lime;height:40px"></td></tr>
 </tbody></table>
 </form>
 </div>
@@ -197,12 +210,17 @@ $total = mysqli_fetch_row($total_resultx);
 
 $per = 10; 
 $totalpage = ceil($total["0"]/$per); //總頁數
-$startrow = ($page-1)*$per; //每頁起始資料序號
-$endrow = $startrow+$per;
 
 if ($totalpage=='0'){
 	$totalpage='1';
 }
+
+if($page>$totalpage){
+	$page=$totalpage;
+}
+
+$startrow = ($page-1)*$per; //每頁起始資料序號
+$endrow = $startrow+$per;
 
 $result = mysqli_query($con,$query) or die("Query failed : " . mysqli_error($con)); 
 
@@ -231,8 +249,8 @@ echo '&nbsp;／'.$totalpage.'&nbsp;頁）</div>';
 $d=1;
 while ($line = mysqli_fetch_assoc($result)) {
 	if ($d>$startrow and $d<=$endrow){
-		echo '<table class="table_css2" style="width:100%"><tbody><tr><td style="width:58px;">ID</td><td style="width:120px;">金額</td><td>餘額</td></tr>';
 		$id=$line['id'];
+		echo '<table class="table_css2" style="width:100%"><tbody><tr><td style="width:58px;">ID</td><td style="width:120px;">金額</td><td>餘額<a href="action.php?mod=del&del_id='.$id.'" style="color:white;text-decoration:underline;float:right;text-align:right" onclick=\'ok=window.confirm("確定刪除嗎？\n之後無法復原！"); if(ok) { } else { return false; }\' target="Ix">刪除</a></td></tr>';
 		$money=$line['money'];
 		if ($money>0){
 			$money='<span style="color:#00FF00">＋'.$money.$acu.'</span>';
@@ -289,7 +307,7 @@ while ($line = mysqli_fetch_assoc($result)) {
 		echo '<tr><td>'.$id.'</td><td>'.$money.'</td><td>'.$remain_sum.$acu.'</td></tr>'."\n";
 		echo '<tr><td>時間：</td><td colspan="2">'.$time.'</td></tr>'."\n";
 		echo '<tr><td>標題：</td><td colspan="2">'.$title.'</td></tr>'."\n";
-		echo '<tr><td>紀錄者：</td><td colspan="2">'.$name.'</td></tr>'."\n";
+		echo '<tr><td>紀錄者：</td><td>'.$name.'</td><td>'.$line['ip'].'</td></tr>'."\n";
 		echo '<tr><td>內容：</td><td colspan="2"><span id="content'.$d.'">'.$short_content.'</span></td></tr>'."\n";
 		echo '</tbody></table>';
 	}
@@ -348,12 +366,20 @@ for ($i=1;$i<=15;$i++){
 	$query="SELECT SUM(money) FROM ${sqlpre}_record WHERE time>".(time()-(86400*($i)))." AND time<".(time()-(86400*($i-1)))." AND account_id='$account_id'";
 	$result=@mysqli_query($con,$query) or die('SQL語句執行失敗！'.(mysqli_error($con)));
 	$line = mysqli_fetch_array($result);
-	$chart_money[]=(floatval($line[0]));
+	if ($line[0]==''){
+		$chart_money[]='null';
+	}else{
+		$chart_money[]=(floatval($line[0]));
+	}
 	
-	$query="SELECT remain_sum FROM ${sqlpre}_record WHERE time>".(time()-(86400*($i)))." AND time<".(time()-(86400*($i-1)))." AND account_id='$account_id' ORDER BY -time DESC";
+	$query="SELECT remain_sum FROM ${sqlpre}_record WHERE time>".(time()-(86400*($i)))." AND time<".(time()-(86400*($i-1)))." AND account_id='$account_id' ORDER BY --time DESC";
 	$result=@mysqli_query($con,$query) or die('SQL語句執行失敗！'.(mysqli_error($con)));
 	$line = mysqli_fetch_array($result);
-	$chart_total[]=floatval($line[0]);
+	if ($line[0]==''){
+		$chart_total[]='null';
+	}else{
+		$chart_total[]=(floatval($line[0]));
+	}
 	
 }
 $chart_money=array_reverse($chart_money);
@@ -383,23 +409,23 @@ var lineChartData = {
 	labels : [<?php echo get_time(); ?>],
 	datasets : [
 		{
-			label: "最近十五天紀錄金額",
-			fillColor : "rgba(14,0,0,0.8)",
-			strokeColor : "rgba(220,220,220,1)",
-			pointColor : "rgba(220,220,220,1)",
-			pointStrokeColor : "#fff",
-			pointHighlightFill : "#fff",
-			pointHighlightStroke : "rgba(220,220,220,1)",
+			label: "日平衡",
+			fillColor : "rgba(14,0,0,0.2)",
+			strokeColor : "rgba(255,0,0,1)",
+			pointColor : "rgba(255,100,100,1)",
+			pointStrokeColor : "#808080",
+			pointHighlightFill : "#FF0000",
+			pointHighlightStroke : "rgba(255,255,255,1)",
 			data : [<?php echo implode(',',$chart_money); ?>]
 		},
 		{
-			label: "最近十五天總存金額",
-			fillColor : "rgba(0,0,14,0.8)",
-			strokeColor : "rgba(220,220,220,1)",
-			pointColor : "rgba(220,220,220,1)",
-			pointStrokeColor : "#fff",
-			pointHighlightFill : "#fff",
-			pointHighlightStroke : "rgba(220,220,220,1)",
+			label: "總金額",
+			fillColor : "rgba(0,0,14,0.2)",
+			strokeColor : "rgba(0,0,255,1)",
+			pointColor : "rgba(100,100,255,1)",
+			pointStrokeColor : "#808080",
+			pointHighlightFill : "#0000FF",
+			pointHighlightStroke : "rgba(255,255,255,1)",
 			data : [<?php echo implode(',',$chart_total); ?>]
 		}
 	]
@@ -407,8 +433,11 @@ var lineChartData = {
 window.onload = function(){
 	var ctx = document.getElementById("canvas").getContext("2d");
 	window.myLine = new Chart(ctx).Line(lineChartData, {
-		responsive: true
+		scaleLineColor: "rgba(255,255,255,0.8)",
+		scaleFontColor: "rgba(255,255,255,0.8)",
+		responsive:true
 	});
+	slideout.disableTouch();
 }
 </script>
 </body>

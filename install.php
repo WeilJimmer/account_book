@@ -83,12 +83,13 @@ $sql = "CREATE TABLE ${sqlpre}_record2
 id bigint AUTO_INCREMENT,
 name_of_account text,
 remain_sum bigint,
+lasttime bigint,
 PRIMARY KEY (id)
 )";
 $result = mysqli_query($con,$sql) or die("Query failed : " . mysqli_error($con)); 
 
 for($i=0;$i<count($account_book_array);$i++){
-	$query="INSERT INTO ${sqlpre}_record2 (name_of_account,remain_sum) VALUE('".(weil_ascii_html_en($account_book_array[$i]))."','0')";
+	$query="INSERT INTO ${sqlpre}_record2 (name_of_account,remain_sum,lasttime) VALUE('".(weil_ascii_html_en($account_book_array[$i]))."','0','-9999999')";
 	$result=@mysqli_query($con,$query) or die('插入帳本失敗FAIL');
 }
 

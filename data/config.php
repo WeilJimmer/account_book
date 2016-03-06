@@ -25,7 +25,7 @@ $sqldb='account_book';
 $sqlpre='ab';
 
 //網站名稱。
-$title_name='我的帳本';
+$title_name='Weil的帳本';
 
 //預設紀錄者(紀錄者為空時所顯示的字串)
 $default_name='System';

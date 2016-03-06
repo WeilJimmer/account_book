@@ -90,7 +90,7 @@ if(isset($_REQUEST['mod'])){
 				exit;
 			}
 			
-			if ($account_id<0 or $account_id>=count($account_book_array)){
+			if ($account_id<=0 or $account_id>count($account_book_array)){
 				echo '<script>alert("帳戶ID有誤！");</script>';
 				exit;
 			}
@@ -106,15 +106,94 @@ if(isset($_REQUEST['mod'])){
 			$line = mysqli_fetch_assoc($result);
 			
 			$remain_sum=(floatval($line['remain_sum'])+$money);
+			$lasttime=intval($line['lasttime']);
 			
-			$query="UPDATE ${sqlpre}_record2 SET remain_sum='$remain_sum' WHERE id='$account_id'";
-			$result=@mysqli_query($con,$query) or die('<script>alert("新增失敗！\n'.(mysqli_error($con)).'")</script>');
+			if ($btime<$lasttime){
+				
+				$query="SELECT SUM(money) FROM ${sqlpre}_record WHERE time>$btime AND account_id='$account_id'";
+				$result=@mysqli_query($con,$query) or die('SQL語句執行失敗！'.(mysqli_error($con)));
+				$line = mysqli_fetch_array($result);
+				$over_btime_money=floatval($line[0]);
+				
+				$when_in_btime_money=($remain_sum-$over_btime_money);
+				
+				$query="INSERT INTO ${sqlpre}_record (money,remain_sum,title,content,time,name,ip,account_id) VALUE('$money','$when_in_btime_money','$title','$content','$btime','$name','$myip','$account_id')";
+				$resultx=@mysqli_query($con,$query) or die('<script>alert("新增失敗！\n'.(mysqli_error($con)).'")</script>');
+				
+				$query = "SELECT * FROM ${sqlpre}_record WHERE time>$btime AND account_id='$account_id' ORDER BY -time DESC, -id DESC";
+				$result = mysqli_query($con,$query) or die("Query failed : " . mysqli_error($con)); 
+				$k=0;
+				while ($line = mysqli_fetch_assoc($result)) {
+					$id=$line['id'];
+					$money_=floatval($line['money']);
+					$when_in_btime_money=($when_in_btime_money+$money_);
+					$query="UPDATE ${sqlpre}_record SET remain_sum='$when_in_btime_money' WHERE id='$id'";
+					@mysqli_query($con,$query) or die('<script>alert("新增失敗！\n'.(mysqli_error($con)).'")</script>');
+					++$k;
+				}
+				
+				if ($remain_sum!=$when_in_btime_money){
+					echo '<script>alert("金額有誤！系統錯誤");</script>';
+				}else{
+					$query="UPDATE ${sqlpre}_record2 SET remain_sum='$when_in_btime_money' WHERE id='$account_id'";
+					$result=@mysqli_query($con,$query) or die('<script>alert("新增失敗！\n'.(mysqli_error($con)).'")</script>');
+				}
+				
+			}else{
 			
-			$query="INSERT INTO ${sqlpre}_record (money,remain_sum,title,content,time,name,ip,account_id) VALUE('$money','$remain_sum','$title','$content','$btime','$name','$myip','$account_id')";
-			$result=@mysqli_query($con,$query) or die('<script>alert("新增失敗！\n'.(mysqli_error($con)).'")</script>');
+				$query="INSERT INTO ${sqlpre}_record (money,remain_sum,title,content,time,name,ip,account_id) VALUE('$money','$remain_sum','$title','$content','$btime','$name','$myip','$account_id')";
+				$result=@mysqli_query($con,$query) or die('<script>alert("新增失敗！\n'.(mysqli_error($con)).'")</script>');
+			
+				$query="UPDATE ${sqlpre}_record2 SET remain_sum='$remain_sum',lasttime='$btime' WHERE id='$account_id'";
+				$result=@mysqli_query($con,$query) or die('<script>alert("新增失敗！\n'.(mysqli_error($con)).'")</script>');
+			
+			}
 			
 			echo '<script>alert("新增成功！");window.top.location.reload();</script>';
 			
+		break;
+		case 'del':
+			
+			$del_id=intval(@$_GET['del_id']);
+			
+			$query="SELECT * FROM ${sqlpre}_record WHERE id='$del_id'";
+			$result=@mysqli_query($con,$query) or die('<script>alert("刪除失敗！\n'.(mysqli_error($con)).'")</script>');
+			$line = mysqli_fetch_assoc($result);
+			$money = floatval($line['money']);
+			$account_id = intval($line['account_id']);
+			$btime = intval($line['time']);
+			$when_in_btime_money = (floatval($line['remain_sum'])-$money);
+			
+			$query="SELECT * FROM ${sqlpre}_record2 WHERE id='$account_id'";
+			$result=@mysqli_query($con,$query) or die('<script>alert("刪除失敗！\n'.(mysqli_error($con)).'")</script>');
+			$line = mysqli_fetch_assoc($result);
+			$remain_sum=floatval($line['remain_sum']);
+			
+			$remain_sum=(floatval($line['remain_sum'])-$money);
+			
+			$query="DELETE FROM ${sqlpre}_record WHERE id='$del_id'";
+			$result=@mysqli_query($con,$query) or die('<script>alert("刪除失敗！\n'.(mysqli_error($con)).'")</script>');
+			
+			$query = "SELECT * FROM ${sqlpre}_record WHERE ((time>$btime OR (time='$btime' AND id>$del_id)) AND account_id='$account_id') ORDER BY -time DESC, -id DESC";
+			$result = mysqli_query($con,$query) or die("Query failed : " . mysqli_error($con)); 
+			$k=0;
+			while ($line = mysqli_fetch_assoc($result)) {
+				$id=$line['id'];
+				$money_=floatval($line['money']);
+				$when_in_btime_money=($when_in_btime_money+$money_);
+				$query="UPDATE ${sqlpre}_record SET remain_sum='$when_in_btime_money' WHERE id='$id'";
+				@mysqli_query($con,$query) or die('<script>alert("刪除失敗！\n'.(mysqli_error($con)).'")</script>');
+				++$k;
+			}
+			
+			if ($remain_sum!=$when_in_btime_money){
+				echo '<script>alert("金額有誤！系統錯誤");</script>';
+			}else{
+				$query="UPDATE ${sqlpre}_record2 SET remain_sum='$when_in_btime_money' WHERE id='$account_id'";
+				$result=@mysqli_query($con,$query) or die('<script>alert("新增失敗！\n'.(mysqli_error($con)).'")</script>');
+			}
+			
+			echo '<script>alert("刪除成功！");window.top.location.reload();</script>';
 		break;
 		default:
 	}
