@@ -208,7 +208,7 @@ $total_resultx = mysqli_query($con,$query2) or die("Query failed : " . mysqli_er
 
 $total = mysqli_fetch_row($total_resultx); 
 
-$per = 10; 
+$per = 15; 
 $totalpage = ceil($total["0"]/$per); //總頁數
 
 if ($totalpage=='0'){
