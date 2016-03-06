@@ -82,7 +82,7 @@ $sql = "CREATE TABLE ${sqlpre}_record2
 (
 id bigint AUTO_INCREMENT,
 name_of_account text,
-remain_sum bigint,
+remain_sum double,
 lasttime bigint,
 PRIMARY KEY (id)
 )";
