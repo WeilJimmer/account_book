@@ -66,7 +66,7 @@ if($account_id<=0 or $account_id>count($account_book_array)){
 
 write_last_pos($account_id,$orderby);
 
-$acu='&nbsp;'.$account_unit_array[$account_id];
+$acu='&nbsp;'.$account_unit_array[($account_id-1)];
 
 $query="SELECT * FROM ${sqlpre}_record2 WHERE id='$account_id'";
 $result=@mysqli_query($con,$query) or die('SQL語句執行失敗！'.(mysqli_error($con)));
@@ -135,7 +135,7 @@ echo '</select>';
 <h3>新增紀錄<span style="float:right"><button style="background-color:black;color:red;" onclick="close_panel()">關閉</button></span></h3>
 <form class="form_style" action="action.php?mod=add" method="post" target="Ix" onsubmit="return submit_form()" id="form1">
 <table class="table_css2"><tbody>
-<tr><td style="width:50px;"><span class="star">*</span>金額：</td><td><input name="money" type="number" id="money_input" pattern="[0-9]*" onfocus="money_check()" onblur="money_check()"></td></tr>
+<tr><td style="width:50px;"><span class="star">*</span>金額：</td><td><input name="money" type="number" id="money_input" pattern="[0-9]*" step="0.00000000001" onfocus="money_check()" onblur="money_check()"></td></tr>
 <tr><td><span class="star">*</span>標題：</td><td><input name="title" type="text" maxlength="20" id="title_input"></td></tr>
 <tr><td>&nbsp;內容：</td><td><textarea name="content" type="text" maxlength="500" id="content_input" style="resize: none;height:100px;"></textarea></td></tr>
 <tr><td>&nbsp;記錄人：</td><td><input name="name" type="text" maxlength="20" id="name_input"></td></tr>
